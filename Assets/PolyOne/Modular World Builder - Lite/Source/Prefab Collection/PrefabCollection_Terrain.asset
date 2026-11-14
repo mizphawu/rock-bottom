@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d966f3d7080112f48bd0f22fce05811c, type: 3}
+  m_Name: PrefabCollection_Terrain
+  m_EditorClassIdentifier: 
+  prefabs:
+  - {fileID: 6389252410527943318, guid: 0018d97e3a4aa8344b29131988c262bb, type: 3}
+  - {fileID: 8515307318236163981, guid: 335c8e3e62b2e0e469351832b0b7aed0, type: 3}
+  - {fileID: 1839322328360721140, guid: 791620c57aeccb1458f38ec232ae29e8, type: 3}
+  - {fileID: 4701121057200450821, guid: 5f7791ca2a487fc4895c93bfd26774f6, type: 3}
+  - {fileID: 8957192929624188983, guid: 27a0ce3b6aab1c243bd181d225d35df5, type: 3}
+  - {fileID: 2505339476041490834, guid: 7c4d9dcc2ad012f41a52362d2bba2b26, type: 3}
+  - {fileID: 7436698807325497476, guid: 68faf84d52a4f7e4e87fc77859873fbd, type: 3}
+  - {fileID: 694958583498182274, guid: 72f64d2d2f97793409bca236ad93d486, type: 3}
+  - {fileID: 4632196317610578126, guid: 7a31b542268b8cf498b9162630d9ea15, type: 3}
+  - {fileID: 940610275827583725, guid: 9be0a3c94d6c6d141a4f5bed91c6df0a, type: 3}
