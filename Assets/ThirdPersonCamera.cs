@@ -1,36 +1,44 @@
+
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class ThirdPersonCamera : MonoBehaviour
 {
-    [Header("Target & Framing")]
-    public Transform target; // Drag CameraTarget here
-    public float distance = 4.5f;
+    [Header("Target")]
+    public Transform target;
+    public float focusHeightOffset = 1.4f;
 
-    [Header("Smooth Orbit Settings")]
-    public float mouseSensitivity = 0.08f;
-    public float rotationSmoothTime = 0.08f;
-    public float minPitch = -30f;
-    public float maxPitch = 70f;
+    [Header("Camera Settings")]
+    public float distance = 4f;
+    public float minDistance = 1.5f;
+    public float maxDistance = 7f;
+    public float zoomSpeed = 1f;
+
+    [Header("Mouse Look")]
+    public float mouseSensitivity = 0.15f;
+    public float minPitch = -35f;
+    public float maxPitch = 65f;
+
+    [Header("Player Rotation")]
+    public float characterTurnSpeed = 15f;
 
     [Header("Collision")]
-    public LayerMask collisionMask;
+    public LayerMask collisionMask = ~0;
 
-    private float targetYaw = 0f;
-    private float targetPitch = 15f;
-    private float currentYaw = 0f;
-    private float currentPitch = 15f;
-    private float yawVelocity;
-    private float pitchVelocity;
+    private float yaw;
+    private float pitch = 15f;
+
     private PlayerStats playerStats;
 
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+
         if (target != null)
         {
-            targetYaw = currentYaw = target.eulerAngles.y;
-            playerStats = target.GetComponentInParent<PlayerStats>();
+            yaw = target.eulerAngles.y;
+            playerStats = target.GetComponentInChildren<PlayerStats>();
         }
     }
 
@@ -38,37 +46,87 @@ public class ThirdPersonCamera : MonoBehaviour
     {
         if (target == null) return;
 
-        // 1. Read New Input System Mouse Delta
+        // 1. Mouse camera rotation
         if (Mouse.current != null)
         {
             Vector2 mouseDelta = Mouse.current.delta.ReadValue();
-            targetYaw += mouseDelta.x * mouseSensitivity;
-            targetPitch -= mouseDelta.y * mouseSensitivity;
-            targetPitch = Mathf.Clamp(targetPitch, minPitch, maxPitch);
+
+            yaw += mouseDelta.x * mouseSensitivity;
+            pitch -= mouseDelta.y * mouseSensitivity;
+
+            pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+
+            // 2. Mouse scroll zoom
+            float scroll = Mouse.current.scroll.ReadValue().y;
+
+            distance -= scroll * zoomSpeed * Time.deltaTime;
+            distance = Mathf.Clamp(distance, minDistance, maxDistance);
         }
 
-        // 2. Smoothly Glide Camera Angles
-        currentYaw = Mathf.SmoothDamp(currentYaw, targetYaw, ref yawVelocity, rotationSmoothTime);
-        currentPitch = Mathf.SmoothDamp(currentPitch, targetPitch, ref pitchVelocity, rotationSmoothTime);
+        // 3. Calculate camera rotation
+        Quaternion cameraRotation = Quaternion.Euler(pitch, yaw, 0f);
 
-        // 3. Calculate Desired Position & Rotation
-        Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
-        Vector3 desiredPosition = target.position - (rotation * Vector3.forward * distance);
+        // 4. Follow player position
+        Vector3 focusPoint = target.position +
+                             Vector3.up * focusHeightOffset;
 
-        // 4. Prevent Camera from Clipping Through Mountain Terrain
-        if (Physics.Linecast(target.position, desiredPosition, out RaycastHit hit, collisionMask))
+        // 5. Camera stays behind player
+        Vector3 desiredPosition = focusPoint -
+            (cameraRotation * Vector3.forward * distance);
+
+        // 6. Camera collision
+        Vector3 direction = (desiredPosition - focusPoint).normalized;
+
+        if (Physics.SphereCast(
+            focusPoint,
+            0.2f,
+            direction,
+            out RaycastHit hit,
+            distance,
+            collisionMask,
+            QueryTriggerInteraction.Ignore))
         {
-            desiredPosition = hit.point + hit.normal * 0.2f;
+            if (hit.transform != target &&
+                !hit.transform.IsChildOf(target))
+            {
+                desiredPosition = focusPoint +
+                    direction * Mathf.Max(0.1f, hit.distance - 0.2f);
+            }
         }
 
-        // 5. Add Subtle Anxiety Camera Shake When Panicking
+        // 7. Anxiety camera shake
         if (playerStats != null && playerStats.anxiety > 30f)
         {
-            float shakeIntensity = (playerStats.anxiety / 100f) * 0.06f;
-            desiredPosition += Random.insideUnitSphere * shakeIntensity;
+            float shake = (playerStats.anxiety / 100f) * 0.03f;
+            desiredPosition += Random.insideUnitSphere * shake;
         }
 
         transform.position = desiredPosition;
-        transform.LookAt(target.position);
+        transform.rotation = cameraRotation;
+
+        // Look directly at player
+        transform.LookAt(focusPoint);
+    }
+
+    // Call this from your movement script
+    public void RotatePlayer(Vector3 movementDirection)
+    {
+        if (movementDirection.sqrMagnitude < 0.01f)
+            return;
+
+        Quaternion targetRotation =
+            Quaternion.LookRotation(movementDirection);
+
+        target.rotation = Quaternion.Slerp(
+            target.rotation,
+            targetRotation,
+            characterTurnSpeed * Time.deltaTime
+        );
+    }
+
+    void OnDisable()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 }

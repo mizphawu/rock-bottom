@@ -105,10 +105,13 @@ public class PlayerStats : MonoBehaviour
     bool CheckFearOfHeights()
     {
         Vector3 checkOrigin = transform.position + transform.forward * 1.5f + Vector3.up * 0.5f;
-        if (Physics.Raycast(checkOrigin, Vector3.down, out RaycastHit hit, 50f, groundLayer))
+        int mask = groundLayer.value == 0 ? Physics.DefaultRaycastLayers : groundLayer.value;
+
+        if (Physics.Raycast(checkOrigin, Vector3.down, out RaycastHit hit, 50f, mask, QueryTriggerInteraction.Ignore))
         {
             return hit.distance > cliffHeightThreshold;
         }
+
         return true;
     }
 
