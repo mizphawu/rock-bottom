@@ -1,95 +1,128 @@
-
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("Movement Speeds")]
-    public float walkSpeed = 4f;
-    public float sprintSpeed = 7.5f;
-    public float gravity = -9.81f;
+    [Header("References")]
+    public Transform cameraTransform;
+    public PlayerStats stats;
 
-    [Header("Animation")]
-    public Animator animator;
+    [Header("Movement & Sprint")]
+    public float walkSpeed = 4.5f;
+    public float sprintSpeed = 7.5f;
+    public float gravity = -18f;
+    public float jumpHeight = 1.2f;
+
+    [Header("Wall Climbing")]
+    public float climbSpeed = 3.2f;
+    public float wallCheckDistance = 0.9f;
+    public LayerMask climbableLayer;
 
     private CharacterController controller;
-    private PlayerStats stats;
     private Vector3 velocity;
+    private float highestAirY;
+    private bool wasGrounded;
 
     void Start()
     {
         controller = GetComponent<CharacterController>();
-        stats = GetComponent<PlayerStats>();
-
-        if (animator == null)
-            animator = GetComponentInChildren<Animator>();
+        if (stats == null) stats = GetComponent<PlayerStats>();
+        if (cameraTransform == null && Camera.main != null) cameraTransform = Camera.main.transform;
+        highestAirY = transform.position.y;
     }
 
     void Update()
     {
-        if (controller.isGrounded && velocity.y < 0)
-            velocity.y = -2f;
+        var kb = Keyboard.current;
+        if (kb == null) return;
 
-        velocity.y += gravity * Time.deltaTime;
+        // Read WASD / Arrow keys via New Input System
+        float h = (kb.dKey.isPressed || kb.rightArrowKey.isPressed ? 1f : 0f)
+                - (kb.aKey.isPressed || kb.leftArrowKey.isPressed ? 1f : 0f);
+        float v = (kb.wKey.isPressed || kb.upArrowKey.isPressed ? 1f : 0f)
+                - (kb.sKey.isPressed || kb.downArrowKey.isPressed ? 1f : 0f);
 
-        float x = 0f;
-        float z = 0f;
+        Vector3 inputDir = new Vector3(h, 0f, v).normalized;
+        bool cameraIsChild = cameraTransform != null && cameraTransform.IsChildOf(transform);
 
-        if (Keyboard.current != null)
+        Vector3 moveDir = Vector3.zero;
+        if (inputDir.magnitude >= 0.1f)
         {
-            if (Keyboard.current.aKey.isPressed) x -= 1f;
-            if (Keyboard.current.dKey.isPressed) x += 1f;
-            if (Keyboard.current.sKey.isPressed) z -= 1f;
-            if (Keyboard.current.wKey.isPressed) z += 1f;
+            if (cameraIsChild)
+            {
+                moveDir = (transform.right * h + transform.forward * v).normalized;
+            }
+            else
+            {
+                float camY = cameraTransform != null ? cameraTransform.eulerAngles.y : transform.eulerAngles.y;
+                float targetAngle = Mathf.Atan2(inputDir.x, inputDir.z) * Mathf.Rad2Deg + camY;
+                transform.rotation = Quaternion.Euler(0f, targetAngle, 0f);
+                moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
+            }
         }
 
-        Vector3 inputDir = new Vector3(x, 0f, z).normalized;
+        // 1. Wall Climbing (Hold E or push W against a climbable wall)
+        int mask = climbableLayer.value == 0 ? Physics.DefaultRaycastLayers : climbableLayer.value;
+        bool wallInFront = Physics.Raycast(transform.position + Vector3.up * 1f, transform.forward, wallCheckDistance, mask, QueryTriggerInteraction.Ignore);
+        bool wantsToClimb = wallInFront && (kb.eKey.isPressed || v > 0.1f) && stats != null && !stats.isExhausted && stats.stamina > 1f;
 
-        bool isMoving = inputDir.sqrMagnitude > 0.01f;
+        if (wantsToClimb)
+        {
+            stats.isClimbing = true;
+            stats.isSprinting = false;
+            stats.isMoving = true;
 
-        bool wantsToSprint = Keyboard.current != null &&
-            Keyboard.current.leftShiftKey.isPressed && z > 0f;
+            velocity.y = 0f;
+            highestAirY = transform.position.y;
 
-        bool canSprint = stats == null ||
-            (!stats.isExhausted && stats.stamina > 1f);
+            float verticalClimb = kb.sKey.isPressed ? -climbSpeed : climbSpeed;
+            Vector3 climbMove = (Vector3.up * verticalClimb) + (transform.forward * 1.5f);
+            controller.Move(climbMove * Time.deltaTime);
+            return;
+        }
+        else if (stats != null)
+        {
+            stats.isClimbing = false;
+        }
 
-        bool isSprinting = isMoving && wantsToSprint && canSprint;
+        // 2. Ground & Fall Detection
+        if (controller.isGrounded)
+        {
+            if (!wasGrounded)
+            {
+                float fallDistance = highestAirY - transform.position.y;
+                if (stats != null) stats.OnLanded(fallDistance);
+            }
+            highestAirY = transform.position.y;
 
-        float currentSpeed = isSprinting ? sprintSpeed : walkSpeed;
+            if (velocity.y < 0f) velocity.y = -2f;
+
+            if (kb.spaceKey.wasPressedThisFrame)
+            {
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            }
+        }
+        else
+        {
+            if (transform.position.y > highestAirY) highestAirY = transform.position.y;
+        }
+        wasGrounded = controller.isGrounded;
+
+        // 3. Moving & Sprinting State (Stamina ONLY restores when staying still)
+        bool moving = inputDir.magnitude >= 0.1f;
+        bool sprinting = moving && kb.leftShiftKey.isPressed && stats != null && !stats.isExhausted;
 
         if (stats != null)
-            stats.isSprinting = isSprinting;
-
-        // Movement relative to player facing
-        if (isMoving)
         {
-            Vector3 moveDir =
-                transform.right * inputDir.x +
-                transform.forward * inputDir.z;
-
-            controller.Move(
-                moveDir.normalized * currentSpeed * Time.deltaTime
-            );
+            stats.isMoving = moving;
+            stats.isSprinting = sprinting;
         }
 
-        // Update Animator Blend Tree
-        if (animator != null)
-        {
-            float animationSpeed = 0f;
+        float currentSpeed = sprinting ? sprintSpeed : walkSpeed;
+        controller.Move(moveDir * currentSpeed * Time.deltaTime);
 
-            if (isMoving)
-                animationSpeed = isSprinting ? 1f : 0.5f;
-
-            animator.SetFloat(
-                "Speed",
-                animationSpeed,
-                0.1f,
-                Time.deltaTime
-            );
-        }
-
-        // Apply gravity
+        velocity.y += gravity * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
     }
 }
