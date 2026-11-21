@@ -7,17 +7,20 @@ public class PlayerMovement : MonoBehaviour
     [Header("References")]
     public Transform cameraTransform;
     public PlayerStats stats;
+    public Animator animator;
 
     [Header("Movement & Sprint")]
     public float walkSpeed = 4.5f;
     public float sprintSpeed = 7.5f;
+    public float turnSpeed = 12f;
     public float gravity = -18f;
     public float jumpHeight = 1.2f;
 
-    [Header("Wall Climbing")]
+    [Header("Terrain Slope Climbing")]
     public float climbSpeed = 3.2f;
-    public float wallCheckDistance = 0.9f;
-    public LayerMask climbableLayer;
+    public float wallCheckDistance = 1.1f;
+    public float minClimbSlopeAngle = 50f; // Slopes >= 50° are climbable cliffs
+    public LayerMask climbableLayer; // Leave as Nothing/Default to detect Terrain
 
     private CharacterController controller;
     private Vector3 velocity;
@@ -28,6 +31,7 @@ public class PlayerMovement : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
         if (stats == null) stats = GetComponent<PlayerStats>();
+        if (animator == null) animator = GetComponentInChildren<Animator>();
         if (cameraTransform == null && Camera.main != null) cameraTransform = Camera.main.transform;
         highestAirY = transform.position.y;
     }
@@ -37,35 +41,30 @@ public class PlayerMovement : MonoBehaviour
         var kb = Keyboard.current;
         if (kb == null) return;
 
-        // Read WASD / Arrow keys via New Input System
         float h = (kb.dKey.isPressed || kb.rightArrowKey.isPressed ? 1f : 0f)
                 - (kb.aKey.isPressed || kb.leftArrowKey.isPressed ? 1f : 0f);
         float v = (kb.wKey.isPressed || kb.upArrowKey.isPressed ? 1f : 0f)
                 - (kb.sKey.isPressed || kb.downArrowKey.isPressed ? 1f : 0f);
 
         Vector3 inputDir = new Vector3(h, 0f, v).normalized;
-        bool cameraIsChild = cameraTransform != null && cameraTransform.IsChildOf(transform);
 
-        Vector3 moveDir = Vector3.zero;
-        if (inputDir.magnitude >= 0.1f)
+        // 1. Check Steep Terrain Slope in Front
+        int mask = climbableLayer.value == 0 ? Physics.DefaultRaycastLayers : climbableLayer.value;
+        bool steepSlopeInFront = false;
+        Vector3 wallNormal = Vector3.zero;
+
+        if (Physics.Raycast(transform.position + Vector3.up * 1f, transform.forward, out RaycastHit wallHit, wallCheckDistance, mask, QueryTriggerInteraction.Ignore))
         {
-            if (cameraIsChild)
+            float slopeAngle = Vector3.Angle(wallHit.normal, Vector3.up);
+            if (slopeAngle >= minClimbSlopeAngle)
             {
-                moveDir = (transform.right * h + transform.forward * v).normalized;
-            }
-            else
-            {
-                float camY = cameraTransform != null ? cameraTransform.eulerAngles.y : transform.eulerAngles.y;
-                float targetAngle = Mathf.Atan2(inputDir.x, inputDir.z) * Mathf.Rad2Deg + camY;
-                transform.rotation = Quaternion.Euler(0f, targetAngle, 0f);
-                moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
+                steepSlopeInFront = true;
+                wallNormal = wallHit.normal;
             }
         }
 
-        // 1. Wall Climbing (Hold E or push W against a climbable wall)
-        int mask = climbableLayer.value == 0 ? Physics.DefaultRaycastLayers : climbableLayer.value;
-        bool wallInFront = Physics.Raycast(transform.position + Vector3.up * 1f, transform.forward, wallCheckDistance, mask, QueryTriggerInteraction.Ignore);
-        bool wantsToClimb = wallInFront && (kb.eKey.isPressed || v > 0.1f) && stats != null && !stats.isExhausted && stats.stamina > 1f;
+        // Climb ONLY when holding E against a steep slope (>= 50°)
+        bool wantsToClimb = steepSlopeInFront && kb.eKey.isPressed && stats != null && !stats.isExhausted && stats.stamina > 1f;
 
         if (wantsToClimb)
         {
@@ -76,9 +75,18 @@ public class PlayerMovement : MonoBehaviour
             velocity.y = 0f;
             highestAirY = transform.position.y;
 
+            // Lock rotation squarely toward the cliff face so it NEVER spins around
+            Vector3 faceWallDir = new Vector3(-wallNormal.x, 0f, -wallNormal.z).normalized;
+            if (faceWallDir.sqrMagnitude > 0.01f)
+            {
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(faceWallDir), turnSpeed * Time.deltaTime);
+            }
+
             float verticalClimb = kb.sKey.isPressed ? -climbSpeed : climbSpeed;
-            Vector3 climbMove = (Vector3.up * verticalClimb) + (transform.forward * 1.5f);
+            Vector3 climbMove = (Vector3.up * verticalClimb) + (transform.forward * 1.2f);
             controller.Move(climbMove * Time.deltaTime);
+
+            UpdateAnimator(true, false, true);
             return;
         }
         else if (stats != null)
@@ -86,7 +94,18 @@ public class PlayerMovement : MonoBehaviour
             stats.isClimbing = false;
         }
 
-        // 2. Ground & Fall Detection
+        // 2. Normal Camera-Relative Turning & Movement
+        Vector3 moveDir = Vector3.zero;
+        if (inputDir.magnitude >= 0.1f)
+        {
+            float camY = cameraTransform != null ? cameraTransform.eulerAngles.y : 0f;
+            float targetAngle = Mathf.Atan2(inputDir.x, inputDir.z) * Mathf.Rad2Deg + camY;
+            Quaternion targetRot = Quaternion.Euler(0f, targetAngle, 0f);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, turnSpeed * Time.deltaTime);
+            moveDir = targetRot * Vector3.forward;
+        }
+
+        // 3. Ground & Fall Detection
         if (controller.isGrounded)
         {
             if (!wasGrounded)
@@ -109,7 +128,7 @@ public class PlayerMovement : MonoBehaviour
         }
         wasGrounded = controller.isGrounded;
 
-        // 3. Moving & Sprinting State (Stamina ONLY restores when staying still)
+        // 4. Moving & Sprinting State (Stamina ONLY restores when staying still)
         bool moving = inputDir.magnitude >= 0.1f;
         bool sprinting = moving && kb.leftShiftKey.isPressed && stats != null && !stats.isExhausted;
 
@@ -124,5 +143,15 @@ public class PlayerMovement : MonoBehaviour
 
         velocity.y += gravity * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
+
+        UpdateAnimator(moving, sprinting, false);
+    }
+
+    void UpdateAnimator(bool moving, bool sprinting, bool climbing)
+    {
+        if (animator == null) return;
+        float animSpeed = !moving ? 0f : (sprinting ? 1f : 0.5f);
+        animator.SetFloat("Speed", animSpeed, 0.1f, Time.deltaTime);
+        animator.SetBool("IsClimbing", climbing);
     }
 }
