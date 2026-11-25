@@ -1,4 +1,3 @@
-
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -12,22 +11,18 @@ public class ThirdPersonCamera : MonoBehaviour
     public float distance = 4f;
     public float minDistance = 1.5f;
     public float maxDistance = 7f;
-    public float zoomSpeed = 1f;
+    public float zoomSpeed = 0.05f;
 
     [Header("Mouse Look")]
     public float mouseSensitivity = 0.15f;
     public float minPitch = -35f;
     public float maxPitch = 65f;
 
-    [Header("Player Rotation")]
-    public float characterTurnSpeed = 15f;
-
     [Header("Collision")]
     public LayerMask collisionMask = ~0;
 
     private float yaw;
     private float pitch = 15f;
-
     private PlayerStats playerStats;
 
     void Start()
@@ -46,35 +41,28 @@ public class ThirdPersonCamera : MonoBehaviour
     {
         if (target == null) return;
 
-        // 1. Mouse camera rotation
+        // 1. Mouse camera rotation & scroll zoom
         if (Mouse.current != null)
         {
             Vector2 mouseDelta = Mouse.current.delta.ReadValue();
 
             yaw += mouseDelta.x * mouseSensitivity;
             pitch -= mouseDelta.y * mouseSensitivity;
-
             pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
 
-            // 2. Mouse scroll zoom
             float scroll = Mouse.current.scroll.ReadValue().y;
-
-            distance -= scroll * zoomSpeed * Time.deltaTime;
+            distance -= scroll * zoomSpeed;
             distance = Mathf.Clamp(distance, minDistance, maxDistance);
         }
 
-        // 3. Calculate camera rotation
+        // 2. Calculate camera rotation & focus point
         Quaternion cameraRotation = Quaternion.Euler(pitch, yaw, 0f);
+        Vector3 focusPoint = target.position + Vector3.up * focusHeightOffset;
 
-        // 4. Follow player position
-        Vector3 focusPoint = target.position +
-                             Vector3.up * focusHeightOffset;
+        // 3. Position camera behind player
+        Vector3 desiredPosition = focusPoint - (cameraRotation * Vector3.forward * distance);
 
-        // 5. Camera stays behind player
-        Vector3 desiredPosition = focusPoint -
-            (cameraRotation * Vector3.forward * distance);
-
-        // 6. Camera collision
+        // 4. Camera wall/terrain collision
         Vector3 direction = (desiredPosition - focusPoint).normalized;
 
         if (Physics.SphereCast(
@@ -86,15 +74,13 @@ public class ThirdPersonCamera : MonoBehaviour
             collisionMask,
             QueryTriggerInteraction.Ignore))
         {
-            if (hit.transform != target &&
-                !hit.transform.IsChildOf(target))
+            if (hit.transform != target && !hit.transform.IsChildOf(target))
             {
-                desiredPosition = focusPoint +
-                    direction * Mathf.Max(0.1f, hit.distance - 0.2f);
+                desiredPosition = focusPoint + direction * Mathf.Max(0.2f, hit.distance - 0.2f);
             }
         }
 
-        // 7. Anxiety camera shake
+        // 5. Anxiety camera shake
         if (playerStats != null && playerStats.anxiety > 30f)
         {
             float shake = (playerStats.anxiety / 100f) * 0.03f;
@@ -103,25 +89,6 @@ public class ThirdPersonCamera : MonoBehaviour
 
         transform.position = desiredPosition;
         transform.rotation = cameraRotation;
-
-        // Look directly at player
-        transform.LookAt(focusPoint);
-    }
-
-    // Call this from your movement script
-    public void RotatePlayer(Vector3 movementDirection)
-    {
-        if (movementDirection.sqrMagnitude < 0.01f)
-            return;
-
-        Quaternion targetRotation =
-            Quaternion.LookRotation(movementDirection);
-
-        target.rotation = Quaternion.Slerp(
-            target.rotation,
-            targetRotation,
-            characterTurnSpeed * Time.deltaTime
-        );
     }
 
     void OnDisable()
