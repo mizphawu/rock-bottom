@@ -256,7 +256,7 @@ PrefabInstance:
   m_SourcePrefab: {fileID: 100100000, guid: 9fdb0b81806c32146b028081309c89f6, type: 3}
 --- !u!4 &98858266 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 4728923440855448, guid: 9fdb0b81806c32146b028081309c89f6, type: 3}
+  m_CorrespondingSourceObject: {fileID: 4547258515637600, guid: 9fdb0b81806c32146b028081309c89f6, type: 3}
   m_PrefabInstance: {fileID: 98858265}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &108788101
@@ -7319,7 +7319,7 @@ TerrainCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_TerrainData: {fileID: 0}
+  m_TerrainData: {fileID: 15600000, guid: a300e16b3bd118546bf145482b91ce8f, type: 2}
   m_EnableTreeColliders: 1
 --- !u!218 &1241531451
 Terrain:
@@ -8118,7 +8118,7 @@ TerrainCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_TerrainData: {fileID: 15600000, guid: a30ce2dc98ae54e479dc23b6e277b793, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 42272114c52078e4f9c2de02f3875206, type: 2}
   m_EnableTreeColliders: 1
 --- !u!218 &1471179151
 Terrain:
@@ -8129,7 +8129,7 @@ Terrain:
   m_GameObject: {fileID: 1471179148}
   m_Enabled: 1
   serializedVersion: 6
-  m_TerrainData: {fileID: 15600000, guid: a30ce2dc98ae54e479dc23b6e277b793, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 42272114c52078e4f9c2de02f3875206, type: 2}
   m_TreeDistance: 5000
   m_TreeBillboardDistance: 50
   m_TreeCrossFadeLength: 5
