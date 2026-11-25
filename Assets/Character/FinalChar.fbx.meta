@@ -1,9 +1,94 @@
 fileFormatVersion: 2
-guid: 47ed4974595abf243a9e5347acba2db6
+guid: 7c37c08700858bc42a23c02bcc6cc6cc
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: arms.mat
+    second: {fileID: 2100000, guid: 5bf7f7347a76ff143a258248e195a0db, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: bagopen.mat
+    second: {fileID: 2100000, guid: fac10374a53789545acb31d3b80aa77a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: clip.mat
+    second: {fileID: 2100000, guid: f0fae4c2b0d39c0498835ff3be6c91ca, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: hair.mat
+    second: {fileID: 2100000, guid: f36388e8e6d87ba4cb24c721fd593171, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: hat.mat
+    second: {fileID: 2100000, guid: 178430026d33c844199271e4e5c2eb97, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: head.mat
+    second: {fileID: 2100000, guid: faa74f466153d5546a7dccc14e8b6b34, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: jacket.mat
+    second: {fileID: 2100000, guid: e885272bff1d3c440b362689395bf2aa, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: legs.mat
+    second: {fileID: 2100000, guid: 6631b67044307874489d0e6bc82c4a5c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: pants.mat
+    second: {fileID: 2100000, guid: 71c2239fb45fb3748a2e6d270e0cadc2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: pocket.mat
+    second: {fileID: 2100000, guid: 76ce87ba52f09a746b53a88ca62f8d2b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: pocket1.mat
+    second: {fileID: 2100000, guid: 854d570b431dad54bb8bf22494c762b5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: shoes.mat
+    second: {fileID: 2100000, guid: 3e9a47df199d1e041b8adc400a156b98, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: strap.mat
+    second: {fileID: 2100000, guid: 073a0afb14a1db94da5d8f511390a990, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: strap2.mat
+    second: {fileID: 2100000, guid: 46ec5731b2e5788498ebefce9f7b981f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: strap3.mat
+    second: {fileID: 2100000, guid: 2d49ba8ec4eb0f3458d9b8173ffea059, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: strap4.mat
+    second: {fileID: 2100000, guid: 8d26b5c184aa85e44bb0bcca3560b7ee, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: tumbler.mat
+    second: {fileID: 2100000, guid: f1ed2b8dc574c894da3a41c9bd3266d4, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -16,7 +101,7 @@ ModelImporter:
     resampleCurves: 1
     optimizeGameObjects: 0
     removeConstantScaleCurves: 0
-    motionNodeName: 
+    motionNodeName: rig/root
     animationImportErrors: 
     animationImportWarnings: 
     animationRetargetingWarnings: 
@@ -32,18 +117,76 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: rig|climb
-      takeName: rig|climb
-      internalID: 6128912179867327037
+      name: rig|bidle
+      takeName: rig|bidle
+      internalID: -1605970453560670180
       firstFrame: 0
-      lastFrame: 36
+      lastFrame: 56
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
-      loopTime: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
+      name: rig|climb
+      takeName: rig|climb
+      internalID: 6128912179867327037
+      firstFrame: 0
+      lastFrame: 35
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
+      name: rig|ClimbSide
+      takeName: rig|ClimbSide
+      internalID: -2597170311211670249
+      firstFrame: 0
+      lastFrame: 41
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 1
       loopBlend: 0
       loopBlendOrientation: 0
       loopBlendPositionY: 0
@@ -90,18 +233,18 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
-      name: rig|idle
-      takeName: rig|idle
-      internalID: 1599155768152908184
+      name: rig|Jump
+      takeName: rig|Jump
+      internalID: -512320013847864616
       firstFrame: 0
-      lastFrame: 56
+      lastFrame: 26
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
-      loopTime: 1
+      loopTime: 0
       loopBlend: 0
       loopBlendOrientation: 0
       loopBlendPositionY: 0
@@ -119,11 +262,11 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
-      name: rig|Sprint
-      takeName: rig|Sprint
-      internalID: 6076261970450845655
+      name: rig|sprint
+      takeName: rig|sprint
+      internalID: -7832212954815985967
       firstFrame: 0
-      lastFrame: 16
+      lastFrame: 20
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
