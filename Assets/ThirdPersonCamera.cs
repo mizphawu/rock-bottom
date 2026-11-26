@@ -14,7 +14,7 @@ public class ThirdPersonCamera : MonoBehaviour
     public float zoomSpeed = 0.05f;
 
     [Header("Mouse Look")]
-    public float mouseSensitivity = 0.15f;
+    public float baseMouseSensitivity = 0.08f; // Base speed multiplied by Settings slider (default 1.4x)
     public float minPitch = -35f;
     public float maxPitch = 65f;
 
@@ -30,6 +30,12 @@ public class ThirdPersonCamera : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
+        if (target == null)
+        {
+            GameObject player = GameObject.FindGameObjectWithTag("Player");
+            if (player != null) target = player.transform;
+        }
+
         if (target != null)
         {
             yaw = target.eulerAngles.y;
@@ -41,13 +47,24 @@ public class ThirdPersonCamera : MonoBehaviour
     {
         if (target == null) return;
 
-        // 1. Mouse camera rotation & scroll zoom
-        if (Mouse.current != null)
+        // Re-lock cursor when clicking inside the game screen if it got unlocked by UI
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && Cursor.lockState != CursorLockMode.Locked)
         {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+
+        // 1. Mouse camera rotation & scroll zoom (connected to Settings MouseSensitivity)
+        if (Mouse.current != null && Cursor.lockState == CursorLockMode.Locked)
+        {
+            // Reads the exact slider multiplier saved by SettingsMenuManager (default 1.4x)
+            float savedMultiplier = PlayerPrefs.GetFloat("MouseSensitivity", 1.4f);
+            float effectiveSensitivity = baseMouseSensitivity * savedMultiplier;
+
             Vector2 mouseDelta = Mouse.current.delta.ReadValue();
 
-            yaw += mouseDelta.x * mouseSensitivity;
-            pitch -= mouseDelta.y * mouseSensitivity;
+            yaw += mouseDelta.x * effectiveSensitivity;
+            pitch -= mouseDelta.y * effectiveSensitivity;
             pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
 
             float scroll = Mouse.current.scroll.ReadValue().y;
