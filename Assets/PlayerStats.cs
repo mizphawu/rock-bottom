@@ -13,6 +13,7 @@ public class PlayerStats : MonoBehaviour
 
     [Header("Game Over UI")]
     public GameObject gameOverPanel;
+    public string mainMenuSceneName = "MainMenu"; // Set this to your exact Main Menu scene name
 
     [Header("Meters (0 to 100)")]
     public float stamina = 100f;
@@ -240,11 +241,18 @@ public class PlayerStats : MonoBehaviour
         Time.timeScale = 0f;
     }
 
-    // Hook this to your Game Over UI Retry/Restart button
+    // Hook this to your Game Over "Play Again" button
     public void RestartScene()
     {
         Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    // Hook this to your Game Over "Main Menu" button
+    public void GoToMainMenu()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(mainMenuSceneName);
     }
 
     public void EatFruit(float staminaAmount, float anxietyRelief, string fruitName, string customThought = "")
