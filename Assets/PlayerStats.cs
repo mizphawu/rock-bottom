@@ -11,6 +11,9 @@ public class PlayerStats : MonoBehaviour
     public ProgressBar anxietyBar;
     public TextMeshProUGUI thoughtText;
 
+    [Header("Game Over UI")]
+    public GameObject gameOverPanel;
+
     [Header("Meters (0 to 100)")]
     public float stamina = 100f;
     public float anxiety = 0f; // 0 = calm, 100 = panic
@@ -28,6 +31,10 @@ public class PlayerStats : MonoBehaviour
     public float calmAnxietyDecay = 4f;
     public float highAnxietyThreshold = 70f; // High anxiety penalizes stamina
 
+    [Header("Panic Death Timers")]
+    public float ledgePeakTimeLimit = 7f;    // 7s at peak anxiety on wall/ledge -> Game Over
+    public float monsterCatchTimeLimit = 5f; // 5s after monster catch to eat berry -> Game Over
+
     [HideInInspector] public bool isMoving;
     [HideInInspector] public bool isSprinting;
     [HideInInspector] public bool isClimbing;
@@ -37,18 +44,27 @@ public class PlayerStats : MonoBehaviour
     private bool warnedHeights = false;
     private bool warnedHighAnxiety = false;
     private bool isCaught = false;
+    private bool isDead = false;
+
+    private float ledgePeakTimer = 0f;
+    private float monsterCatchTimer = 0f;
 
     void Start()
     {
+        Time.timeScale = 1f;
+        if (gameOverPanel != null)
+            gameOverPanel.SetActive(false);
+
         UpdateBars();
     }
 
     void Update()
     {
-        if (isCaught) return;
+        if (isDead) return;
 
         HandleStamina();
         HandleAnxiety();
+        HandlePanicDeathTimers();
         UpdateBars();
     }
 
@@ -89,6 +105,13 @@ public class PlayerStats : MonoBehaviour
 
     void HandleAnxiety()
     {
+        // While caught by monster, anxiety stays locked at peak (100) until she eats a berry!
+        if (isCaught)
+        {
+            anxiety = 100f;
+            return;
+        }
+
         bool nearDrop = CheckFearOfHeights();
         bool climbingHigh = isClimbing && CheckHeightAboveGround() >= highClimbHeight;
 
@@ -121,6 +144,42 @@ public class PlayerStats : MonoBehaviour
         else if (anxiety < highAnxietyThreshold - 10f)
         {
             warnedHighAnxiety = false;
+        }
+    }
+
+    void HandlePanicDeathTimers()
+    {
+        bool atPeak = anxiety >= 100f;
+
+        // 1. Caught by Monster: 5 seconds to eat a berry or Game Over
+        if (isCaught && atPeak)
+        {
+            monsterCatchTimer += Time.deltaTime;
+            if (monsterCatchTimer >= monsterCatchTimeLimit)
+            {
+                TriggerGameOver();
+                return;
+            }
+        }
+        else
+        {
+            monsterCatchTimer = 0f;
+        }
+
+        // 2. Hanging on wall (isClimbing) or standing on ledge (CheckFearOfHeights) at peak anxiety > 7s -> Game Over
+        bool onWallOrLedge = isClimbing || CheckFearOfHeights();
+        if (atPeak && onWallOrLedge)
+        {
+            ledgePeakTimer += Time.deltaTime;
+            if (ledgePeakTimer >= ledgePeakTimeLimit)
+            {
+                TriggerGameOver();
+                return;
+            }
+        }
+        else
+        {
+            ledgePeakTimer = 0f;
         }
     }
 
@@ -159,17 +218,32 @@ public class PlayerStats : MonoBehaviour
 
     public void OnCaughtByMonster()
     {
-        if (isCaught) return;
-        isCaught = true;
+        if (isCaught || isDead) return;
 
+        isCaught = true;
+        monsterCatchTimer = 0f;
         anxiety = 100f;
         UpdateBars();
-        ShowThought("It got me...", 2.5f);
-        Invoke(nameof(RestartScene), 2.5f);
+        ShowThought("It got me! I need to eat a berry right now!", 4.5f);
     }
 
-    void RestartScene()
+    public void TriggerGameOver()
     {
+        if (isDead) return;
+        isDead = true;
+
+        if (gameOverPanel != null)
+            gameOverPanel.SetActive(true);
+
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+        Time.timeScale = 0f;
+    }
+
+    // Hook this to your Game Over UI Retry/Restart button
+    public void RestartScene()
+    {
+        Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
@@ -177,6 +251,13 @@ public class PlayerStats : MonoBehaviour
     {
         stamina = Mathf.Clamp(stamina + staminaAmount, 0f, 100f);
         anxiety = Mathf.Clamp(anxiety - anxietyRelief, 0f, 100f);
+
+        // If she ate a berry/fruit and lowered anxiety below 100, cancel the monster catch panic!
+        if (anxiety < 100f)
+        {
+            isCaught = false;
+            monsterCatchTimer = 0f;
+        }
 
         if (stamina >= 30f) isExhausted = false;
 
