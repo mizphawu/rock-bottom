@@ -18,7 +18,7 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Terrain Slope Climbing")]
     public float climbSpeed = 3.2f;
-    public float wallCheckDistance = 1.1f;
+    public float wallCheckDistance = 1.2f;
     public float minClimbSlopeAngle = 50f;
     public LayerMask climbableLayer;
 
@@ -44,8 +44,6 @@ public class PlayerMovement : MonoBehaviour
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
 
-        // FIX 1: Unparent camera at runtime if it's inside the player object
-        // to stop the player rotation from spinning the camera in a 360 loop.
         if (cameraTransform != null && cameraTransform.IsChildOf(transform))
         {
             Debug.LogWarning("Camera was parented to Player, causing a rotation loop! Detaching camera.");
@@ -70,34 +68,59 @@ public class PlayerMovement : MonoBehaviour
         if (inputDir.sqrMagnitude > 1f)
             inputDir.Normalize();
 
-        // 1. Check Steep Terrain Slope in Front
+        // 1. Detect Cliff Wall (In Front OR Below Ledge when pressing E)
         int mask = climbableLayer.value == 0
             ? Physics.DefaultRaycastLayers
             : climbableLayer.value;
 
-        bool steepSlopeInFront = false;
+        bool foundClimbableWall = false;
         Vector3 wallNormal = Vector3.zero;
+        bool grabbedTopLedge = false;
 
-        if (Physics.Raycast(
-            transform.position + Vector3.up * 1f,
-            transform.forward,
-            out RaycastHit wallHit,
-            wallCheckDistance,
-            mask,
-            QueryTriggerInteraction.Ignore))
+        Vector3 chestOrigin = transform.position + Vector3.up * 1.0f;
+        Vector3 kneeOrigin = transform.position + Vector3.up * 0.35f;
+
+        // Check A: Mountain/cliff wall directly in front (chest or knee level)
+        if (Physics.Raycast(chestOrigin, transform.forward, out RaycastHit wallHit, wallCheckDistance, mask, QueryTriggerInteraction.Ignore) ||
+            Physics.Raycast(kneeOrigin, transform.forward, out wallHit, wallCheckDistance, mask, QueryTriggerInteraction.Ignore))
         {
             float slopeAngle = Vector3.Angle(wallHit.normal, Vector3.up);
-
             if (slopeAngle >= minClimbSlopeAngle)
             {
-                steepSlopeInFront = true;
+                foundClimbableWall = true;
                 wallNormal = wallHit.normal;
             }
         }
+        // Check B: Standing at top edge facing outward -> press E to turn around and grab the cliff below
+        else if (kb.eKey.isPressed)
+        {
+            // Probe slightly ahead and below the player's feet, then raycast back toward the cliff face
+            Vector3[] probeOffsets = new Vector3[]
+            {
+                (transform.forward * 0.7f) + (Vector3.down * 0.55f),
+                (transform.forward * 1.0f) + (Vector3.down * 0.9f)
+            };
 
-        // Climb ONLY when holding E against a steep slope
+            foreach (Vector3 offset in probeOffsets)
+            {
+                Vector3 probeOrigin = transform.position + offset;
+                if (Physics.Raycast(probeOrigin, -transform.forward, out RaycastHit ledgeHit, 1.8f, mask, QueryTriggerInteraction.Ignore))
+                {
+                    float slopeAngle = Vector3.Angle(ledgeHit.normal, Vector3.up);
+                    if (slopeAngle >= minClimbSlopeAngle)
+                    {
+                        foundClimbableWall = true;
+                        wallNormal = ledgeHit.normal;
+                        grabbedTopLedge = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Climb whenever holding E near a cliff wall or top ledge
         bool wantsToClimb =
-            steepSlopeInFront &&
+            foundClimbableWall &&
             kb.eKey.isPressed &&
             stats != null &&
             !stats.isExhausted &&
@@ -113,18 +136,53 @@ public class PlayerMovement : MonoBehaviour
             velocity.y = 0f;
             highestAirY = transform.position.y;
 
-            Vector3 faceWallDir = new Vector3(-wallNormal.x, 0f, -wallNormal.z);
-            if (faceWallDir.sqrMagnitude > 0.01f)
+            // Direction straight INTO the mountain wall (opposite of the cliff's outward normal)
+            Vector3 faceMountainDir = new Vector3(-wallNormal.x, 0f, -wallNormal.z).normalized;
+
+            if (faceMountainDir.sqrMagnitude > 0.01f)
             {
-                RotateCharacter(faceWallDir.normalized);
+                // Snap immediately to face the mountain wall on ledge grab so player never faces outward
+                if (grabbedTopLedge)
+                    transform.rotation = Quaternion.LookRotation(faceMountainDir);
+                else
+                    RotateCharacter(faceMountainDir);
             }
 
-            float verticalClimb = kb.sKey.isPressed ? -climbSpeed : climbSpeed;
-            Vector3 climbMove = (Vector3.up * verticalClimb) + (transform.forward * 1.2f);
+            // If grabbing from the top ledge, step off the lip onto the cliff face while facing the mountain
+            if (grabbedTopLedge)
+            {
+                Vector3 dropOntoWall = (-faceMountainDir * 0.35f) + (Vector3.down * 0.5f);
+                controller.Move(dropOntoWall);
+            }
 
+            bool climbingDown = kb.sKey.isPressed || kb.downArrowKey.isPressed;
+            bool climbingUp = kb.wKey.isPressed || kb.upArrowKey.isPressed;
+
+            // Default when holding E at a top ledge: start descending slightly or hold onto wall
+            float verticalClimb = 0f;
+            Vector3 wallStickMove = faceMountainDir * 0.6f; // Always hug INTO the mountain wall
+
+            if (climbingDown)
+            {
+                verticalClimb = -climbSpeed;
+                wallStickMove = faceMountainDir * 0.45f;
+
+                // Stop climbing automatically when reaching flat ground at the bottom
+                if (!grabbedTopLedge && controller.isGrounded)
+                {
+                    stats.isClimbing = false;
+                }
+            }
+            else if (climbingUp)
+            {
+                verticalClimb = climbSpeed;
+                wallStickMove = faceMountainDir * 1.1f;
+            }
+
+            Vector3 climbMove = (Vector3.up * verticalClimb) + wallStickMove;
             controller.Move(climbMove * Time.deltaTime);
 
-            UpdateAnimator(true, false, true, false);
+            UpdateAnimator(climbingUp || climbingDown, false, true, false);
             return;
         }
         else if (stats != null)
@@ -140,7 +198,6 @@ public class PlayerMovement : MonoBehaviour
         {
             if (cameraTransform != null)
             {
-                // FIX 2: Use flat Y-axis camera angle to prevent gimbal/pitch glitches
                 float camYaw = cameraTransform.eulerAngles.y;
                 Quaternion flatCamRot = Quaternion.Euler(0f, camYaw, 0f);
                 moveDir = (flatCamRot * inputDir).normalized;
@@ -216,7 +273,6 @@ public class PlayerMovement : MonoBehaviour
         UpdateAnimator(moving, sprinting, false, isFalling);
     }
 
-    // FIX 3: Strict Y-axis rotation helper so character never tilts or spins wildly
     void RotateCharacter(Vector3 targetDirection)
     {
         targetDirection.y = 0f;
@@ -226,7 +282,7 @@ public class PlayerMovement : MonoBehaviour
         transform.rotation = Quaternion.Slerp(
             transform.rotation,
             targetRotation,
-            1f - Mathf.Exp(-turnSpeed * Time.deltaTime) // Frame-rate independent smooth damping
+            1f - Mathf.Exp(-turnSpeed * Time.deltaTime)
         );
     }
 
@@ -236,7 +292,6 @@ public class PlayerMovement : MonoBehaviour
 
         float animSpeed = !moving ? 0f : (sprinting ? 1f : 0.5f);
 
-        // FIX 4: Set Speed directly without dampTime lag so walk animation starts immediately
         animator.SetFloat("Speed", animSpeed);
         animator.SetBool("IsClimbing", climbing);
         animator.SetBool("IsFalling", falling);
