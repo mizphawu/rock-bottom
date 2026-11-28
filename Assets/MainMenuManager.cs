@@ -5,8 +5,10 @@ using UnityEngine.SceneManagement;
 public class MainMenuManager : MonoBehaviour
 {
     [Header("Scene & Panels")]
-    public string gameSceneName = "SampleScene";
+    public string gameSceneName = "Modular Scene";
+    public GameObject mainMenuPanel;
     public GameObject settingsPanel;
+    public GameObject gameOverPanel;
 
     [Header("Fade")]
     public CanvasGroup fadeCanvasGroup;   // full-screen black panel
@@ -15,10 +17,42 @@ public class MainMenuManager : MonoBehaviour
 
     private bool isLoading;
 
+    void Start()
+    {
+        Time.timeScale = 1f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        // Check if we arrived here because Keri died in Modular Scene
+        if (PlayerPrefs.GetInt("ShowGameOver", 0) == 1)
+        {
+            PlayerPrefs.SetInt("ShowGameOver", 0); // Reset so normal launches show Main Menu
+            PlayerPrefs.Save();
+
+            if (mainMenuPanel != null) mainMenuPanel.SetActive(false);
+            if (settingsPanel != null) settingsPanel.SetActive(false);
+            if (gameOverPanel != null) gameOverPanel.SetActive(true);
+        }
+        else
+        {
+            if (mainMenuPanel != null) mainMenuPanel.SetActive(true);
+            if (settingsPanel != null) settingsPanel.SetActive(false);
+            if (gameOverPanel != null) gameOverPanel.SetActive(false);
+        }
+    }
+
+    // Wire this to BOTH your Main Menu "Play" button and Game Over "Play Again" button
     public void PlayGame()
     {
         if (isLoading) return; // ignore double clicks
         StartCoroutine(FadeAndLoad());
+    }
+
+    // Wire this to your Game Over "Back to Main" button
+    public void BackToMainMenu()
+    {
+        if (gameOverPanel != null) gameOverPanel.SetActive(false);
+        if (mainMenuPanel != null) mainMenuPanel.SetActive(true);
     }
 
     private IEnumerator FadeAndLoad()

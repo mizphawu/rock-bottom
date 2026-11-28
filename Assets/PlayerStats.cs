@@ -11,9 +11,8 @@ public class PlayerStats : MonoBehaviour
     public ProgressBar anxietyBar;
     public TextMeshProUGUI thoughtText;
 
-    [Header("Game Over UI")]
-    public GameObject gameOverPanel;
-    public string mainMenuSceneName = "MainMenu"; // Set this to your exact Main Menu scene name
+    [Header("Scene Navigation")]
+    public string mainMenuSceneName = "3dMainMenu"; // Exact name of your Main Menu scene
 
     [Header("Meters (0 to 100)")]
     public float stamina = 100f;
@@ -53,9 +52,6 @@ public class PlayerStats : MonoBehaviour
     void Start()
     {
         Time.timeScale = 1f;
-        if (gameOverPanel != null)
-            gameOverPanel.SetActive(false);
-
         UpdateBars();
     }
 
@@ -233,25 +229,13 @@ public class PlayerStats : MonoBehaviour
         if (isDead) return;
         isDead = true;
 
-        if (gameOverPanel != null)
-            gameOverPanel.SetActive(true);
+        // Tell 3dMainMenu to open the Game Over panel when it loads
+        PlayerPrefs.SetInt("ShowGameOver", 1);
+        PlayerPrefs.Save();
 
+        Time.timeScale = 1f;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
-        Time.timeScale = 0f;
-    }
-
-    // Hook this to your Game Over "Play Again" button
-    public void RestartScene()
-    {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-    }
-
-    // Hook this to your Game Over "Main Menu" button
-    public void GoToMainMenu()
-    {
-        Time.timeScale = 1f;
         SceneManager.LoadScene(mainMenuSceneName);
     }
 

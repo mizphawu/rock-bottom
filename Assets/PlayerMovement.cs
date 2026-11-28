@@ -94,7 +94,6 @@ public class PlayerMovement : MonoBehaviour
         // Check B: Standing at top edge facing outward -> press E to turn around and grab the cliff below
         else if (kb.eKey.isPressed)
         {
-            // Probe slightly ahead and below the player's feet, then raycast back toward the cliff face
             Vector3[] probeOffsets = new Vector3[]
             {
                 (transform.forward * 0.7f) + (Vector3.down * 0.55f),
@@ -136,19 +135,16 @@ public class PlayerMovement : MonoBehaviour
             velocity.y = 0f;
             highestAirY = transform.position.y;
 
-            // Direction straight INTO the mountain wall (opposite of the cliff's outward normal)
             Vector3 faceMountainDir = new Vector3(-wallNormal.x, 0f, -wallNormal.z).normalized;
 
             if (faceMountainDir.sqrMagnitude > 0.01f)
             {
-                // Snap immediately to face the mountain wall on ledge grab so player never faces outward
                 if (grabbedTopLedge)
                     transform.rotation = Quaternion.LookRotation(faceMountainDir);
                 else
                     RotateCharacter(faceMountainDir);
             }
 
-            // If grabbing from the top ledge, step off the lip onto the cliff face while facing the mountain
             if (grabbedTopLedge)
             {
                 Vector3 dropOntoWall = (-faceMountainDir * 0.35f) + (Vector3.down * 0.5f);
@@ -158,16 +154,14 @@ public class PlayerMovement : MonoBehaviour
             bool climbingDown = kb.sKey.isPressed || kb.downArrowKey.isPressed;
             bool climbingUp = kb.wKey.isPressed || kb.upArrowKey.isPressed;
 
-            // Default when holding E at a top ledge: start descending slightly or hold onto wall
             float verticalClimb = 0f;
-            Vector3 wallStickMove = faceMountainDir * 0.6f; // Always hug INTO the mountain wall
+            Vector3 wallStickMove = faceMountainDir * 0.6f;
 
             if (climbingDown)
             {
                 verticalClimb = -climbSpeed;
                 wallStickMove = faceMountainDir * 0.45f;
 
-                // Stop climbing automatically when reaching flat ground at the bottom
                 if (!grabbedTopLedge && controller.isGrounded)
                 {
                     stats.isClimbing = false;
@@ -269,7 +263,12 @@ public class PlayerMovement : MonoBehaviour
         Vector3 finalMove = (moveDir * currentSpeed) + Vector3.up * velocity.y;
         controller.Move(finalMove * Time.deltaTime);
 
-        bool isFalling = !controller.isGrounded && velocity.y < -0.5f;
+        // Only play falling animation when falling off a real drop (not during a normal flat-ground jump)
+        float dropFromPeak = highestAirY - transform.position.y;
+        bool isFalling = !controller.isGrounded &&
+                         velocity.y < -5.5f &&
+                         (!isJumping || dropFromPeak > jumpHeight + 0.6f);
+
         UpdateAnimator(moving, sprinting, false, isFalling);
     }
 
